@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  
+  <!-- Compatibilité iOS Safari (PWA Web App) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Golf Tracker">
+  <meta name="theme-color" content="#1b4332">
+  
+  <title>Golf Tracker</title>
+  
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background-color: #0f231c;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      /* Safe Area Padding pour iPhone (Notch & Home Bar) */
+      padding-top: max(8px, env(safe-area-inset-top));
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+      padding-left: max(8px, env(safe-area-inset-left));
+      padding-right: max(8px, env(safe-area-inset-right));
+      gap: 8px;
+    }
+
+    /* Conteneur principal */
+    .main-container {
+      flex: 1;
+      display: flex;
+      gap: 8px;
+      min-height: 0;
+    }
+
+    /* Grille de gauche (18 trous) */
+    .holes-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(6, 1fr);
+      gap: 6px;
+    }
+
+    .hole-card {
+      background: #1b4332;
+      border: 2px solid #2d6a4f;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 2px;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .hole-card.active {
+      border-color: #52b788;
+      background: #2d6a4f;
+      box-shadow: 0 0 10px rgba(82, 183, 136, 0.4);
+      transform: scale(0.97);
+    }
+
+    .hole-card.completed {
+      background: #143627;
+    }
+
+    .hole-number {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #b7e4c7;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .hole-score {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+
+    .hole-score.empty {
+      color: rgba(255, 255, 255, 0.2);
+      font-size: 1.2rem;
+    }
+
+    /* Colonne de droite (1 à 9 + Effacer) */
+    .strokes-column {
+      width: 72px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 4px;
+    }
+
+    .stroke-btn {
+      flex: 1;
+      width: 100%;
+      border-radius: 50%;
+      background: #40916c;
+      border: 2px solid #52b788;
+      color: white;
+      font-size: 1.3rem;
+      font-weight: 800;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      transition: background-color 0.1s, transform 0.1s;
+    }
+
+    .stroke-btn:active {
+      background: #52b788;
+      transform: scale(0.92);
+    }
+
+    .stroke-btn.clear-btn {
+      background: #742a2a;
+      border-color: #e53e3e;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .stroke-btn.clear-btn:active {
+      background: #e53e3e;
+    }
+
+    /* Barre du bas (Navigation & Total) */
+    .bottom-bar {
+      height: 52px;
+      background: #1b4332;
+      border: 2px solid #2d6a4f;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+    }
+
+    .nav-btn {
+      background: #2d6a4f;
+      border: 1px solid #52b788;
+      color: white;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+
+    .nav-btn:active {
+      background: #52b788;
+    }
+
+    .total-display {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .total-label {
+      font-size: 0.85rem;
+      color: #b7e4c7;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .total-value {
+      font-size: 1.7rem;
+      font-weight: 900;
+      color: #d8f3dc;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app">
+    <div class="main-container">
+      <!-- Grille des 18 trous -->
+      <div class="holes-grid" id="holesGrid"></div>
+
+      <!-- Clavier latéral 1 à 9 + effacer -->
+      <div class="strokes-column" id="strokesColumn"></div>
+    </div>
+
+    <!-- Barre inférieure de navigation et total -->
+    <div class="bottom-bar">
+      <button class="nav-btn" onclick="navigateHole(-1)">&larr;</button>
+      <div class="total-display">
+        <span class="total-label">Total :</span>
+        <span class="total-value" id="totalScore">0</span>
+      </div>
+      <button class="nav-btn" onclick="navigateHole(1)">&rarr;</button>
+    </div>
+  </div>
+
+  <script>
+    const scores = Array(18).fill(null);
+    let activeHoleIndex = 0;
+
+    const holesGrid = document.getElementById('holesGrid');
+    const strokesColumn = document.getElementById('strokesColumn');
+    const totalScoreEl = document.getElementById('totalScore');
+
+    function initHoles() {
+      holesGrid.innerHTML = '';
+      for (let i = 0; i < 18; i++) {
+        const card = document.createElement('div');
+        card.className = `hole-card ${i === activeHoleIndex ? 'active' : ''}`;
+        card.id = `hole-${i}`;
+        card.onclick = () => selectHole(i);
+
+        const num = document.createElement('div');
+        num.className = 'hole-number';
+        num.textContent = `T${i + 1}`;
+
+        const score = document.createElement('div');
+        score.className = `hole-score ${scores[i] === null ? 'empty' : ''}`;
+        score.id = `score-${i}`;
+        score.textContent = scores[i] !== null ? scores[i] : '-';
+
+        card.appendChild(num);
+        card.appendChild(score);
+        holesGrid.appendChild(card);
+      }
+    }
+
+    function initStrokes() {
+      strokesColumn.innerHTML = '';
+      for (let i = 1; i <= 9; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'stroke-btn';
+        btn.textContent = i;
+        btn.onclick = () => recordScore(i);
+        strokesColumn.appendChild(btn);
+      }
+      
+      const clearBtn = document.createElement('button');
+      clearBtn.className = 'stroke-btn clear-btn';
+      clearBtn.textContent = 'EFF';
+      clearBtn.onclick = () => recordScore(null);
+      strokesColumn.appendChild(clearBtn);
+    }
+
+    function selectHole(index) {
+      activeHoleIndex = index;
+      updateUI();
+    }
+
+    function recordScore(val) {
+      scores[activeHoleIndex] = val;
+      if (val !== null && activeHoleIndex < 17) {
+        activeHoleIndex++;
+      }
+      updateUI();
+    }
+
+    function navigateHole(delta) {
+      const newIndex = activeHoleIndex + delta;
+      if (newIndex >= 0 && newIndex < 18) {
+        activeHoleIndex = newIndex;
+        updateUI();
+      }
+    }
+
+    function updateUI() {
+      let total = 0;
+      for (let i = 0; i < 18; i++) {
+        const card = document.getElementById(`hole-${i}`);
+        const scoreEl = document.getElementById(`score-${i}`);
+        
+        const isSelected = i === activeHoleIndex;
+        const hasScore = scores[i] !== null;
+
+        card.className = `hole-card ${isSelected ? 'active' : ''} ${hasScore && !isSelected ? 'completed' : ''}`;
+        scoreEl.textContent = hasScore ? scores[i] : '-';
+        scoreEl.className = `hole-score ${hasScore ? '' : 'empty'}`;
+
+        if (hasScore) {
+          total += scores[i];
+        }
+      }
+      totalScoreEl.textContent = total;
+    }
+
+    initHoles();
+    initStrokes();
+    updateUI();
+  </script>
+</body>
+</html>
